@@ -79,6 +79,76 @@ enum MusicItemMapper {
     return result
   }
 
+  // MARK: - Queue Entry
+
+  static func mapQueueEntry(_ entry: ApplicationMusicPlayer.Queue.Entry) -> [String: Any] {
+    var result: [String: Any] = [
+      "id": String(describing: entry.id),
+      "title": entry.title,
+      "subtitle": entry.subtitle ?? "",
+      "artworkUrl": extractArtworkURL(entry.artwork),
+      "isTransient": entry.isTransient,
+    ]
+
+    if let item = entry.item {
+      switch item {
+      case .song(let song):
+        result["itemId"] = String(describing: song.id)
+        result["type"] = "song"
+      case .musicVideo(let musicVideo):
+        result["itemId"] = String(describing: musicVideo.id)
+        result["type"] = "musicVideo"
+      @unknown default:
+        result["type"] = "unknown"
+      }
+    }
+
+    return result
+  }
+
+  // MARK: - Shuffle Mode
+
+  static func describeShuffleMode(_ mode: MusicPlayer.ShuffleMode?) -> String {
+    switch mode {
+    case .off, .none:
+      return "off"
+    case .songs:
+      return "songs"
+    @unknown default:
+      return "off"
+    }
+  }
+
+  static func parseShuffleMode(_ string: String) -> MusicPlayer.ShuffleMode {
+    switch string {
+    case "songs": return .songs
+    default: return .off
+    }
+  }
+
+  // MARK: - Repeat Mode
+
+  static func describeRepeatMode(_ mode: MusicPlayer.RepeatMode?) -> String {
+    switch mode {
+    case .none:
+      return "none"
+    case .one:
+      return "one"
+    case .all:
+      return "all"
+    @unknown default:
+      return "none"
+    }
+  }
+
+  static func parseRepeatMode(_ string: String) -> MusicPlayer.RepeatMode {
+    switch string {
+    case "one": return .one
+    case "all": return .all
+    default: return MusicPlayer.RepeatMode.none
+    }
+  }
+
   // MARK: - Playback Status
 
   static func describePlaybackStatus(_ status: MusicPlayer.PlaybackStatus) -> String {

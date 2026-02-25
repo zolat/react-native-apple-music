@@ -95,6 +95,18 @@ final class PlaybackController {
     playbackTime = time
   }
 
+  // MARK: - Shuffle & Repeat
+
+  var shuffleMode: MusicPlayer.ShuffleMode {
+    get { player.state.shuffleMode ?? .off }
+    set { player.state.shuffleMode = newValue }
+  }
+
+  var repeatMode: MusicPlayer.RepeatMode {
+    get { player.state.repeatMode ?? MusicPlayer.RepeatMode.none }
+    set { player.state.repeatMode = newValue }
+  }
+
   // MARK: - Queue Management
 
   func setQueue<T: PlayableMusicItem>(_ item: T) async throws {
@@ -105,6 +117,37 @@ final class PlaybackController {
   func setQueue<T: PlayableMusicItem>(_ items: [T], startingAt item: T) async throws {
     player.queue = ApplicationMusicPlayer.Queue(for: items, startingAt: item)
     try await player.prepareToPlay()
+  }
+
+  func getQueueEntries() -> [[String: Any]] {
+    player.queue.entries.map { MusicItemMapper.mapQueueEntry($0) }
+  }
+
+  func getCurrentEntryId() -> String? {
+    guard let entry = player.queue.currentEntry else { return nil }
+    return String(describing: entry.id)
+  }
+
+  func insertIntoQueue<T: PlayableMusicItem>(
+    _ item: T,
+    position: ApplicationMusicPlayer.Queue.EntryInsertionPosition
+  ) async throws {
+    try await player.queue.insert(item, position: position)
+  }
+
+  func removeQueueEntry(at index: Int) throws {
+    guard index >= 0 && index < player.queue.entries.count else {
+      throw QueueServiceError.indexOutOfBounds(index)
+    }
+    let entryIndex = player.queue.entries.index(
+      player.queue.entries.startIndex,
+      offsetBy: index
+    )
+    player.queue.entries.remove(at: entryIndex)
+  }
+
+  func clearQueue() {
+    player.queue.entries = []
   }
 
   // MARK: - Current Song Info

@@ -145,11 +145,105 @@ final class QueueService {
     try await playbackController.setQueue(songs, startingAt: songs[startIndex])
   }
 
+  // MARK: - Queue Insertion
+
+  func insertIntoQueue(itemId: String, type: String, position: String) async throws {
+    let musicItemId = MusicItemID(itemId)
+    let isLibrary = Self.isLibraryId(itemId)
+
+    guard let mediaType = MediaType(rawValue: type) else {
+      throw QueueServiceError.unknownMediaType(type)
+    }
+
+    let insertionPosition = Self.parseInsertionPosition(position)
+
+    if isLibrary {
+      guard #available(iOS 16.0, *) else {
+        throw QueueServiceError.libraryRequiresiOS16
+      }
+      try await insertLibraryItem(id: musicItemId, type: mediaType, position: insertionPosition)
+    } else {
+      try await insertCatalogItem(id: musicItemId, type: mediaType, position: insertionPosition)
+    }
+  }
+
+  private func insertCatalogItem(
+    id: MusicItemID,
+    type: MediaType,
+    position: ApplicationMusicPlayer.Queue.EntryInsertionPosition
+  ) async throws {
+    switch type {
+    case .song:
+      guard let song = try await catalogService.fetchSong(id: id) else {
+        throw QueueServiceError.itemNotFound("Song", inLibrary: false)
+      }
+      try await playbackController.insertIntoQueue(song, position: position)
+
+    case .album:
+      guard let album = try await catalogService.fetchAlbum(id: id) else {
+        throw QueueServiceError.itemNotFound("Album", inLibrary: false)
+      }
+      try await playbackController.insertIntoQueue(album, position: position)
+
+    case .playlist:
+      guard let playlist = try await catalogService.fetchPlaylist(id: id) else {
+        throw QueueServiceError.itemNotFound("Playlist", inLibrary: false)
+      }
+      try await playbackController.insertIntoQueue(playlist, position: position)
+
+    case .station:
+      guard let station = try await catalogService.fetchStation(id: id) else {
+        throw QueueServiceError.itemNotFound("Station", inLibrary: false)
+      }
+      try await playbackController.insertIntoQueue(station, position: position)
+    }
+  }
+
+  @available(iOS 16.0, *)
+  private func insertLibraryItem(
+    id: MusicItemID,
+    type: MediaType,
+    position: ApplicationMusicPlayer.Queue.EntryInsertionPosition
+  ) async throws {
+    let service = makeLibraryService()
+
+    switch type {
+    case .song:
+      guard let song = try await service.fetchSong(id: id) else {
+        throw QueueServiceError.itemNotFound("Song", inLibrary: true)
+      }
+      try await playbackController.insertIntoQueue(song, position: position)
+
+    case .album:
+      guard let album = try await service.fetchAlbum(id: id) else {
+        throw QueueServiceError.itemNotFound("Album", inLibrary: true)
+      }
+      try await playbackController.insertIntoQueue(album, position: position)
+
+    case .playlist:
+      guard let playlist = try await service.fetchPlaylist(id: id) else {
+        throw QueueServiceError.itemNotFound("Playlist", inLibrary: true)
+      }
+      try await playbackController.insertIntoQueue(playlist, position: position)
+
+    case .station:
+      throw QueueServiceError.unsupportedLibraryType("station")
+    }
+  }
+
   // MARK: - Helpers
 
   /// Checks if an ID is a library ID (starts with "l.", "i.", or "p.")
   static func isLibraryId(_ itemId: String) -> Bool {
     itemId.hasPrefix("l.") || itemId.hasPrefix("i.") || itemId.hasPrefix("p.")
+  }
+
+  /// Maps JS string "next"/"later" to MusicKit insertion position
+  static func parseInsertionPosition(_ string: String) -> ApplicationMusicPlayer.Queue.EntryInsertionPosition {
+    switch string {
+    case "next": return .afterCurrentEntry
+    default: return .tail
+    }
   }
 }
 
@@ -160,6 +254,7 @@ enum QueueServiceError: LocalizedError {
   case libraryRequiresiOS16
   case itemNotFound(String, inLibrary: Bool)
   case unsupportedLibraryType(String)
+  case indexOutOfBounds(Int)
 
   var errorDescription: String? {
     switch self {
@@ -172,6 +267,8 @@ enum QueueServiceError: LocalizedError {
       return "\(item) not found in \(source)"
     case .unsupportedLibraryType(let type):
       return "Unsupported library media type: \(type)"
+    case .indexOutOfBounds(let index):
+      return "Queue index out of bounds: \(index)"
     }
   }
 }
