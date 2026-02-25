@@ -18,9 +18,14 @@ export * from './types/tracks-from-library';
 
 export * from './types/playlist';
 
+export * from './types/queue';
+
+export * from './types/rating';
+
 import useCurrentSong from './hooks/use-current-song';
 import useIsPlaying from './hooks/use-is-playing';
 import usePlaybackState from './hooks/use-playback-state';
+import useQueue from './hooks/use-queue';
 import Auth from './modules/auth';
 import MusicKit from './modules/music-kit';
 import Player from './modules/player';
@@ -33,4 +38,4 @@ export { isLibraryItem } from './utils/is-library-item';
 
 export { getErrorMessage } from './utils/get-error-message';
 
-export { useCurrentSong, useIsPlaying, usePlaybackState, Auth, Player, MusicKit };
+export { useCurrentSong, useIsPlaying, usePlaybackState, useQueue, Auth, Player, MusicKit };

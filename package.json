@@ -32,6 +32,7 @@
     "lint:check": "eslint --ext \".ts,.tsx\" \"src/**/*.{ts,tsx,*.ts,*tsx}\"",
     "lint:format": "eslint --fix --ext \".ts,.tsx\" \"src/**/*.{ts,tsx,*.ts,*tsx}\"",
     "ts:check": "tsc --project ./tsconfig.json --skipLibCheck --noemit",
+    "test": "jest",
     "prepare": "husky install",
     "postinstall": "patch-package"
   },
@@ -64,6 +65,7 @@
     "rollup-plugin-folder-input": "^1.0.1",
     "rollup-plugin-ts": "^3.4.5",
     "semantic-release": "^21.1.2",
+    "ts-jest": "^28.0.8",
     "typescript": "^5.0.2"
   },
   "resolutions": {
@@ -77,10 +79,17 @@
     "example"
   ],
   "jest": {
-    "preset": "react-native",
+    "preset": "ts-jest",
+    "testEnvironment": "node",
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
+    ],
+    "setupFiles": [
+      "<rootDir>/src/__tests__/setup.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "<rootDir>/src/__tests__/setup.ts"
     ]
   }
 }

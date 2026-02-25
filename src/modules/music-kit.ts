@@ -2,6 +2,7 @@ import { NativeModules } from 'react-native';
 import type { CatalogSearchType, ICatalogSearch } from '../types/catalog-search';
 import type { MusicItem } from '../types/music-item';
 import type { IPlaylistsResponse, IPlaylistSongsResponse } from '../types/playlist';
+import type { RatingResult, RatingResourceType, RatingValue } from '../types/rating';
 import type { ISong } from '../types/song';
 import type { ITracksFromLibrary } from '../types/tracks-from-library';
 
@@ -159,6 +160,64 @@ class MusicKit {
       await MusicModule.playLibraryPlaylist(playlistId, startingAt);
     } catch (error) {
       console.error('Apple Music Kit: Playing library playlist failed.', error);
+    }
+  }
+  // MARK: - Ratings
+
+  /**
+   * Gets the user's personal rating for a catalog or library item.
+   * @param {string} itemId - The catalog or library ID of the item.
+   * @param {RatingResourceType} type - The type of item ('song', 'album', or 'playlist').
+   * @returns {Promise<RatingResult>} The rating: 'love', 'dislike', or 'none'.
+   */
+  public static async getRating(
+    itemId: string,
+    type: RatingResourceType,
+  ): Promise<RatingResult> {
+    try {
+      return (await MusicModule.getRating(itemId, type)) as RatingResult;
+    } catch (error) {
+      console.error('Apple Music Kit: getRating failed.', error);
+      return 'none';
+    }
+  }
+
+  /**
+   * Sets a personal rating (love or dislike) on a catalog or library item.
+   * This syncs across all the user's devices and shows the heart in the Music app.
+   * @param {string} itemId - The catalog or library ID of the item.
+   * @param {RatingResourceType} type - The type of item ('song', 'album', or 'playlist').
+   * @param {RatingValue} rating - The rating to set ('love' or 'dislike').
+   * @returns {Promise<void>}
+   */
+  public static async addRating(
+    itemId: string,
+    type: RatingResourceType,
+    rating: RatingValue,
+  ): Promise<void> {
+    try {
+      await MusicModule.addRating(itemId, type, rating);
+    } catch (error) {
+      console.error('Apple Music Kit: addRating failed.', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Removes the user's personal rating from a catalog or library item.
+   * @param {string} itemId - The catalog or library ID of the item.
+   * @param {RatingResourceType} type - The type of item ('song', 'album', or 'playlist').
+   * @returns {Promise<void>}
+   */
+  public static async removeRating(
+    itemId: string,
+    type: RatingResourceType,
+  ): Promise<void> {
+    try {
+      await MusicModule.removeRating(itemId, type);
+    } catch (error) {
+      console.error('Apple Music Kit: removeRating failed.', error);
+      throw error;
     }
   }
 }

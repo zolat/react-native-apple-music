@@ -15,6 +15,7 @@ final class MusicModule: RCTEventEmitter {
   private let playbackController = PlaybackController.shared
   private let subscriptionService = SubscriptionService()
   private let catalogService = CatalogService()
+  private let ratingService = RatingService()
   private let queueService: QueueService
 
   /// Creates LibraryService on-demand (iOS 16+ only)
@@ -44,7 +45,7 @@ final class MusicModule: RCTEventEmitter {
   // MARK: - RCTEventEmitter Overrides
 
   override func supportedEvents() -> [String]! {
-    ["onPlaybackStateChange", "onCurrentSongChange", "onPlaybackTimeUpdate"]
+    ["onPlaybackStateChange", "onCurrentSongChange", "onPlaybackTimeUpdate", "onQueueChange"]
   }
 
   override func startObserving() {
@@ -243,6 +244,168 @@ final class MusicModule: RCTEventEmitter {
     }
   }
 
+  @objc(getQueue:rejecter:)
+  func getQueue(
+    _ resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [playbackController] in
+      let entries = playbackController.getQueueEntries()
+      var result: [String: Any] = ["entries": entries]
+      if let currentEntryId = playbackController.getCurrentEntryId() {
+        result["currentEntryId"] = currentEntryId
+      }
+      resolve(result)
+    }
+  }
+
+  @objc(insertIntoQueue:type:position:resolver:rejecter:)
+  func insertIntoQueue(
+    _ itemId: String,
+    type: String,
+    position: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [queueService] in
+      do {
+        try await queueService.insertIntoQueue(itemId: itemId, type: type, position: position)
+        resolve("Item inserted into queue")
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
+    }
+  }
+
+  @objc(removeQueueEntry:resolver:rejecter:)
+  func removeQueueEntry(
+    _ index: Int,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [playbackController] in
+      do {
+        try playbackController.removeQueueEntry(at: index)
+        resolve("Entry removed from queue")
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
+    }
+  }
+
+  @objc(clearQueue:rejecter:)
+  func clearQueue(
+    _ resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [playbackController] in
+      playbackController.clearQueue()
+      resolve("Queue cleared")
+    }
+  }
+
+  // MARK: - Shuffle & Repeat
+
+  @objc(getShuffleMode:rejecter:)
+  func getShuffleMode(
+    _ resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [playbackController] in
+      let mode = MusicItemMapper.describeShuffleMode(playbackController.shuffleMode)
+      resolve(mode)
+    }
+  }
+
+  @objc(setShuffleMode:resolver:rejecter:)
+  func setShuffleMode(
+    _ mode: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [playbackController] in
+      playbackController.shuffleMode = MusicItemMapper.parseShuffleMode(mode)
+      resolve(mode)
+    }
+  }
+
+  @objc(getRepeatMode:rejecter:)
+  func getRepeatMode(
+    _ resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [playbackController] in
+      let mode = MusicItemMapper.describeRepeatMode(playbackController.repeatMode)
+      resolve(mode)
+    }
+  }
+
+  @objc(setRepeatMode:resolver:rejecter:)
+  func setRepeatMode(
+    _ mode: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [playbackController] in
+      playbackController.repeatMode = MusicItemMapper.parseRepeatMode(mode)
+      resolve(mode)
+    }
+  }
+
+  // MARK: - Ratings
+
+  @objc(getRating:type:resolver:rejecter:)
+  func getRating(
+    _ itemId: String,
+    type: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [ratingService] in
+      do {
+        let rating = try await ratingService.getRating(itemId: itemId, type: type)
+        resolve(rating)
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
+    }
+  }
+
+  @objc(addRating:type:rating:resolver:rejecter:)
+  func addRating(
+    _ itemId: String,
+    type: String,
+    rating: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [ratingService] in
+      do {
+        try await ratingService.addRating(itemId: itemId, type: type, rating: rating)
+        resolve("Rating set")
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
+    }
+  }
+
+  @objc(removeRating:type:resolver:rejecter:)
+  func removeRating(
+    _ itemId: String,
+    type: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [ratingService] in
+      do {
+        try await ratingService.removeRating(itemId: itemId, type: type)
+        resolve("Rating removed")
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
+    }
+  }
+
   // MARK: - Library Access (iOS 16+)
 
   @available(iOS 16.0, *)
@@ -388,5 +551,10 @@ extension MusicModule: PlaybackObserverDelegate {
   @MainActor
   func playbackTimeDidUpdate(_ time: TimeInterval) {
     sendEvent(withName: "onPlaybackTimeUpdate", body: ["playbackTime": time])
+  }
+
+  @MainActor
+  func queueDidChange(_ queueInfo: [String: Any]) {
+    sendEvent(withName: "onQueueChange", body: queueInfo)
   }
 }

@@ -12,6 +12,7 @@ protocol PlaybackObserverDelegate: AnyObject {
   @MainActor func playbackStateDidChange(_ state: PlaybackObserver.PlaybackInfo)
   @MainActor func currentSongDidChange(_ songInfo: [String: Any]?)
   @MainActor func playbackTimeDidUpdate(_ time: TimeInterval)
+  @MainActor func queueDidChange(_ queueInfo: [String: Any])
 }
 
 @available(iOS 15.0, *)
@@ -154,13 +155,20 @@ final class PlaybackObserver {
         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         guard !Task.isCancelled else { break }
         
-        // Fetch song info on background thread
+        // Fetch song info and queue entries on background thread
         let songInfo = await playbackController.fetchCurrentSongInfo()
+        let queueEntries = playbackController.getQueueEntries()
+        let currentEntryId = playbackController.getCurrentEntryId()
         guard !Task.isCancelled else { break }
-        
-        // Only hop to main thread for the UI callback
+
+        // Only hop to main thread for the UI callbacks
         await MainActor.run {
           weakDelegate?.currentSongDidChange(songInfo)
+          var queueInfo: [String: Any] = ["entries": queueEntries]
+          if let currentEntryId = currentEntryId {
+            queueInfo["currentEntryId"] = currentEntryId
+          }
+          weakDelegate?.queueDidChange(queueInfo)
         }
       }
     }
