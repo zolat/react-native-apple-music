@@ -20,6 +20,8 @@ export * from './types/playlist';
 
 export * from './types/queue';
 
+export * from './types/rating';
+
 import useCurrentSong from './hooks/use-current-song';
 import useIsPlaying from './hooks/use-is-playing';
 import usePlaybackState from './hooks/use-playback-state';

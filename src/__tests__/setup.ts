@@ -26,6 +26,10 @@ const mockMusicModule: Record<string, jest.Mock> = {
   setShuffleMode: jest.fn(),
   getRepeatMode: jest.fn(),
   setRepeatMode: jest.fn(),
+  // Ratings
+  getRating: jest.fn(),
+  addRating: jest.fn(),
+  removeRating: jest.fn(),
   // Catalog
   catalogSearch: jest.fn(),
   // Library

@@ -15,6 +15,7 @@ final class MusicModule: RCTEventEmitter {
   private let playbackController = PlaybackController.shared
   private let subscriptionService = SubscriptionService()
   private let catalogService = CatalogService()
+  private let ratingService = RatingService()
   private let queueService: QueueService
 
   /// Creates LibraryService on-demand (iOS 16+ only)
@@ -348,6 +349,60 @@ final class MusicModule: RCTEventEmitter {
     Task.detached { [playbackController] in
       playbackController.repeatMode = MusicItemMapper.parseRepeatMode(mode)
       resolve(mode)
+    }
+  }
+
+  // MARK: - Ratings
+
+  @objc(getRating:type:resolver:rejecter:)
+  func getRating(
+    _ itemId: String,
+    type: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [ratingService] in
+      do {
+        let rating = try await ratingService.getRating(itemId: itemId, type: type)
+        resolve(rating)
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
+    }
+  }
+
+  @objc(addRating:type:rating:resolver:rejecter:)
+  func addRating(
+    _ itemId: String,
+    type: String,
+    rating: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [ratingService] in
+      do {
+        try await ratingService.addRating(itemId: itemId, type: type, rating: rating)
+        resolve("Rating set")
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
+    }
+  }
+
+  @objc(removeRating:type:resolver:rejecter:)
+  func removeRating(
+    _ itemId: String,
+    type: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    Task.detached { [ratingService] in
+      do {
+        try await ratingService.removeRating(itemId: itemId, type: type)
+        resolve("Rating removed")
+      } catch {
+        reject("ERROR", error.localizedDescription, error as NSError)
+      }
     }
   }
 

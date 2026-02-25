@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CatalogSearchType } from '../types/catalog-search';
 import { MusicItem } from '../types/music-item';
+import { RatingResourceType, RatingValue } from '../types/rating';
 
 const mockMusicModule = (global as any).__mockMusicModule as Record<string, jest.Mock>;
 
@@ -99,5 +100,70 @@ describe('MusicKit - Library Access', () => {
     mockMusicModule.playLibraryPlaylist.mockResolvedValue('ok');
     await MusicKit.playLibraryPlaylist('p.abc');
     expect(mockMusicModule.playLibraryPlaylist).toHaveBeenCalledWith('p.abc', -1);
+  });
+});
+
+describe('MusicKit - Ratings', () => {
+  it('getRating returns the rating for a catalog song', async () => {
+    mockMusicModule.getRating.mockResolvedValue('love');
+    const result = await MusicKit.getRating('12345', RatingResourceType.SONG);
+    expect(mockMusicModule.getRating).toHaveBeenCalledWith('12345', 'song');
+    expect(result).toBe('love');
+  });
+
+  it('getRating returns "none" for unrated items', async () => {
+    mockMusicModule.getRating.mockResolvedValue('none');
+    const result = await MusicKit.getRating('67890', RatingResourceType.ALBUM);
+    expect(result).toBe('none');
+  });
+
+  it('getRating returns "none" on error', async () => {
+    mockMusicModule.getRating.mockRejectedValue(new Error('fail'));
+    const result = await MusicKit.getRating('bad', RatingResourceType.SONG);
+    expect(result).toBe('none');
+  });
+
+  it('addRating sends love rating for a song', async () => {
+    mockMusicModule.addRating.mockResolvedValue('ok');
+    await MusicKit.addRating('12345', RatingResourceType.SONG, RatingValue.LOVE);
+    expect(mockMusicModule.addRating).toHaveBeenCalledWith('12345', 'song', 'love');
+  });
+
+  it('addRating sends dislike rating for an album', async () => {
+    mockMusicModule.addRating.mockResolvedValue('ok');
+    await MusicKit.addRating('67890', RatingResourceType.ALBUM, RatingValue.DISLIKE);
+    expect(mockMusicModule.addRating).toHaveBeenCalledWith('67890', 'album', 'dislike');
+  });
+
+  it('addRating works with playlist type', async () => {
+    mockMusicModule.addRating.mockResolvedValue('ok');
+    await MusicKit.addRating('pl.abc', RatingResourceType.PLAYLIST, RatingValue.LOVE);
+    expect(mockMusicModule.addRating).toHaveBeenCalledWith('pl.abc', 'playlist', 'love');
+  });
+
+  it('addRating throws on native error', async () => {
+    mockMusicModule.addRating.mockRejectedValue(new Error('HTTP 403'));
+    await expect(
+      MusicKit.addRating('12345', RatingResourceType.SONG, RatingValue.LOVE),
+    ).rejects.toThrow('HTTP 403');
+  });
+
+  it('removeRating calls native with itemId and type', async () => {
+    mockMusicModule.removeRating.mockResolvedValue('ok');
+    await MusicKit.removeRating('12345', RatingResourceType.SONG);
+    expect(mockMusicModule.removeRating).toHaveBeenCalledWith('12345', 'song');
+  });
+
+  it('removeRating works with library items', async () => {
+    mockMusicModule.removeRating.mockResolvedValue('ok');
+    await MusicKit.removeRating('l.abc123', RatingResourceType.SONG);
+    expect(mockMusicModule.removeRating).toHaveBeenCalledWith('l.abc123', 'song');
+  });
+
+  it('removeRating throws on native error', async () => {
+    mockMusicModule.removeRating.mockRejectedValue(new Error('HTTP 501'));
+    await expect(
+      MusicKit.removeRating('12345', RatingResourceType.SONG),
+    ).rejects.toThrow('HTTP 501');
   });
 });
